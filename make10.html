@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>make10</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            color: #333;
+            overflow: hidden;
+        }
+
+        #game-container {
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            width: 90%;
+            max-width: 800px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* ------------------- スタート画面 ------------------- */
+        #start-screen {
+            display: block;
+        }
+
+        #start-screen h1 {
+            font-family: 'Chakra Petch', sans-serif;
+            font-size: 3.5em;
+            color: #4CAF50;
+            margin-bottom: 40px;
+            letter-spacing: 3px;
+        }
+
+        .difficulty-options {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 40px;
+            align-items: center;
+        }
+
+        .difficulty-option {
+            font-size: 1.8em;
+            padding: 15px 30px;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            width: 70%;
+            max-width: 350px;
+            box-sizing: border-box;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .difficulty-option:hover {
+            background-color: #e0e0e0;
+        }
+
+        .difficulty-option.selected {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+            color: #333;
+        }
+
+        .start-message {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        /* ------------------- ゲーム画面 ------------------- */
+        #game-screen {
+            display: none;
+	    position: relative;
+        }
+
+        #question-counter {
+            font-size: 1.4em;
+            color: #777;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        #expression-display {
+            background-color: #e0f2f7;
+            border: 2px solid #a7d9ee;
+            border-radius: 8px;
+	    height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            padding: 10px;
+            box-sizing: border-box;
+            color: #2196F3;
+            /*overflow-x: auto;  横に長い式が出た場合にスクロールバーを表示ってやつ*/
+            white-space: nowrap;
+	    /* line-height: 1.2;  フォントサイズに合わせて調整 */
+	    /* padding-top: 10px;  上下のパディングを調整して中央寄せを維持 */
+	    /* padding-bottom: 10px;  上下のパディングを調整して中央寄せを維持 */
+        }
+
+	/* レスポンシブ対応の調整 */
+	@media (max-width: 768px) {
+	    #expression-display {
+	        font-size: 1.8em;
+	        height: 50px;
+	    }
+	}
+
+	@media (max-width: 480px) {
+	    #expression-display {
+	        font-size: 1.5em;
+	        height: 45px;
+	    }
+	}
+
+        .card-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            width: 80px;
+            height: 120px;
+            background-color: #fff;
+            border: 2px solid #333;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .card.number-card {
+            color: #333;
+        }
+
+        .card.operator-card {
+            font-size: 2.5em; /* 記号は少し小さめに */
+            color: #673AB7; /* 紫色 */
+            border-color: #673AB7;
+        }
+
+        .card:hover:not(.disabled) {
+            transform: translateY(-5px);
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .card.disabled {
+            opacity: 0.4;
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .action-button {
+            padding: 15px 30px;
+            font-size: 1.5em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: bold;
+            color: #fff;
+        }
+
+	#undo-button {
+	    background-color: #2196F3; /* 青色 */
+	}
+
+	#undo-button:hover {
+	    background-color: #1976D2; /* ホバー時の少し濃い青色 */
+	}
+
+        #reset-button {
+            background-color: #FF9800; /* オレンジ */
+        }
+
+        #reset-button:hover {
+            background-color: #FB8C00;
+        }
+
+        #submit-button {
+            background-color: #8BC34A; /* 黄緑 */
+        }
+
+        #submit-button:hover {
+            background-color: #7CB342;
+        }
+
+        #feedback-icon {
+            font-size: 5em;
+            animation: fadeInOut 1.5s forwards; 
+            display: inline-block; 
+            opacity: 0; 
+
+	    position: absolute;
+	    bottom: -20px; /* 数字を大きくすると上の方に表示される？ */
+	    right: 20px; /* 数字が小さいほど右端に表示される？ */
+        }
+
+	/* レスポンシブ対応の調整 */
+	@media (max-width: 768px) {
+	    #feedback-icon {
+	        font-size: 4em;
+	        bottom: 20px; /* 調整 */
+	        right: 20px; /* 調整 */
+	    }
+	}
+
+	@media (max-width: 480px) {
+	    #feedback-icon {
+	        font-size: 3em;
+	        bottom: 15px; /* 調整 */
+	        right: 15px; /* 調整 */
+	    }
+	}
+
+        .feedback-correct {
+            color: #F44336; /* 赤 */
+	    font-weight: bold; /* これで太字になった */
+        }
+
+        .feedback-incorrect {
+            color: #2196F3; /* 青 */
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: scale(0.5); }
+            20% { opacity: 1; transform: scale(1.2); }
+            80% { opacity: 1; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1); } 
+        }
+
+        /* ------------------- 結果画面 ------------------- */
+        #result-screen {
+            display: none;
+        }
+
+        #result-screen h2 {
+            font-size: 2.8em;
+            color: #4CAF50;
+            margin-bottom: 30px;
+        }
+
+        #score-display {
+            font-size: 4em;
+            font-weight: bold;
+            color: #FF5722;
+            margin-bottom: 20px;
+        }
+
+        #message-display {
+            font-size: 1.8em;
+            color: #555;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .result-message {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            #game-container {
+                padding: 20px;
+                max-width: 95%;
+            }
+
+            #start-screen h1 {
+                font-size: 2.5em;
+            }
+
+            .difficulty-option {
+                font-size: 1.5em;
+                padding: 12px 20px;
+            }
+
+            #expression-display {
+                font-size: 1.8em;
+                min-height: 50px;
+            }
+
+            .card {
+                width: 60px;
+                height: 90px;
+                font-size: 2.5em;
+                margin: 5px;
+            }
+
+            .card.operator-card {
+                font-size: 2em;
+            }
+
+            .card-container {
+                gap: 10px;
+            }
+
+            .action-button {
+                padding: 12px 20px;
+                font-size: 1.2em;
+            }
+
+            #feedback-icon {
+                font-size: 4em;
+            }
+
+            #result-screen h2 {
+                font-size: 2.2em;
+            }
+
+            #score-display {
+                font-size: 3em;
+            }
+
+            #message-display {
+                font-size: 1.5em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #game-container {
+                padding: 15px;
+            }
+
+            #start-screen h1 {
+                font-size: 2em;
+                margin-bottom: 20px;
+            }
+
+            .difficulty-option {
+                font-size: 1.2em;
+                padding: 10px 15px;
+                width: 80%;
+            }
+
+            #expression-display {
+                font-size: 1.5em;
+                min-height: 45px;
+            }
+
+            .card {
+                width: 50px;
+                height: 75px;
+                font-size: 2em;
+                border-width: 1px;
+            }
+
+            .card.operator-card {
+                font-size: 1.8em;
+            }
+
+            .card-container {
+                gap: 8px;
+            }
+
+            .action-button {
+                padding: 10px 15px;
+                font-size: 1em;
+            }
+
+            #feedback-icon {
+                font-size: 3em;
+            }
+
+            #result-screen h2 {
+                font-size: 1.8em;
+            }
+
+            #score-display {
+                font-size: 2.5em;
+            }
+
+            #message-display {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="start-screen">
+            <h1>make10</h1>
+            <div class="difficulty-options">
+                <div class="difficulty-option" data-difficulty="easy">★初級</div>
+                <div class="difficulty-option" data-difficulty="medium">★★中級</div>
+                <div class="difficulty-option" data-difficulty="hard">★★★上級</div>
+            </div>
+            <p class="start-message">難易度を選択し、ダブルクリックまたは再度クリックで開始。Enterキーでも開始できます。</p>
+        </div>
+
+        <div id="game-screen">
+            <div id="question-counter">問題 1 / 5</div>
+            <div id="expression-display"></div>
+            <div id="number-cards" class="card-container">
+                </div>
+            <div id="operator-cards" class="card-container">
+                <div class="card operator-card" data-value="+">＋</div>
+                <div class="card operator-card" data-value="-">ー</div>
+                <div class="card operator-card" data-value="*">×</div>
+                <div class="card operator-card" data-value="/">÷</div>
+                <div class="card operator-card" data-value="(">（</div>
+                <div class="card operator-card" data-value=")">）</div>
+            </div>
+            <div class="button-container">
+		<button id="undo-button" class="action-button">１つ消す</button>
+                <button id="reset-button" class="action-button">やり直し</button>
+                <button id="submit-button" class="action-button">決定</button>
+            </div>
+            <div id="feedback-icon"></div>
+        </div>
+
+        <div id="result-screen">
+            <h2>結果発表！</h2>
+            <div id="score-display">0 / 5 点</div>
+            <div id="message-display"></div>
+            <p class="result-message">Enterキーを押してタイトル画面に戻る</p>
+        </div>
+    </div>
+
+    <script>
+        // ゲームの状態を管理する変数
+        let currentDifficulty = '';
+        let currentExpression = '';
+        let availableNumbers = [];
+        let usedNumberIndices = [];
+        let score = 0;
+        let questionCount = 0;
+        const totalQuestions = 5;
+
+        // --- 今回の修正で追加/変更する変数 ---
+        let lastInputWasNumber = false; // 直前の入力が数字だったかどうかを記録する変数
+
+        // 問題データ (各難易度20問程度)
+        const problems = {
+            easy: [
+		/*{ numbers: [値1, 値2, 値3, 値4], solution: '模範解答' },*/
+                { numbers: [1,1,1,7]},
+                { numbers: [1,1,1,9]},
+                { numbers: [1,1,2,6]},
+                { numbers: [1,1,2,8]},
+                { numbers: [1,1,3,5]},
+                { numbers: [1,1,3,7]},
+                { numbers: [1,1,3,9]},
+                { numbers: [1,1,4,4]},
+                { numbers: [1,1,4,6]},
+                { numbers: [1,1,4,8]},
+                { numbers: [1,1,5,5]},
+                { numbers: [1,1,5,7]},
+                { numbers: [1,1,6,6]},
+                { numbers: [1,2,2,5]},
+                { numbers: [1,2,2,7]},
+                { numbers: [1,2,2,9]},
+                { numbers: [1,2,3,4]},
+                { numbers: [1,2,3,6]},
+                { numbers: [1,2,3,8]},
+                { numbers: [1,2,4,5]},
+                { numbers: [1,2,4,7]},
+                { numbers: [1,2,4,9]},
+                { numbers: [1,2,5,6]},
+                { numbers: [1,2,5,8]},
+                { numbers: [1,2,6,7]},
+                { numbers: [1,3,3,3]},
+                { numbers: [1,3,3,5]},
+                { numbers: [1,3,3,9]},
+                { numbers: [1,3,4,4]},
+                { numbers: [1,3,4,8]},
+                { numbers: [1,3,5,7]},
+                { numbers: [1,3,5,9]},
+                { numbers: [1,3,6,6]},
+                { numbers: [1,3,6,8]},
+                { numbers: [1,3,7,7]},
+                { numbers: [1,4,4,9]},
+                { numbers: [1,4,5,8]},
+                { numbers: [1,4,6,7]},
+                { numbers: [1,4,6,9]},
+                { numbers: [1,4,7,8]},
+                { numbers: [1,5,5,9]},
+                { numbers: [1,5,6,8]},
+                { numbers: [1,5,7,7]},
+                { numbers: [1,5,7,9]},
+                { numbers: [1,5,8,8]},
+                { numbers: [1,6,6,9]},
+                { numbers: [1,6,7,8]},
+                { numbers: [1,6,8,9]},
+                { numbers: [1,7,7,9]},
+                { numbers: [1,7,8,8]},
+                { numbers: [1,7,9,9]},
+                { numbers: [1,8,8,9]},
+                { numbers: [1,9,9,9]},
+                { numbers: [2,2,2,4]},
+                { numbers: [2,2,2,8]},
+                { numbers: [2,2,3,3]},
+                { numbers: [2,2,3,7]},
+                { numbers: [2,2,3,9]},
+                { numbers: [2,2,4,6]},
+                { numbers: [2,2,5,5]},
+                { numbers: [2,2,5,9]},
+                { numbers: [2,2,6,8]},
+                { numbers: [2,2,7,7]},
+                { numbers: [2,3,3,6]},
+                { numbers: [2,3,3,8]},
+                { numbers: [2,3,4,5]},
+                { numbers: [2,3,4,7]},
+                { numbers: [2,3,4,9]},
+                { numbers: [2,3,5,6]},
+                { numbers: [2,3,6,9]},
+                { numbers: [2,3,7,8]},
+                { numbers: [2,4,4,4]},
+                { numbers: [2,4,4,8]},
+                { numbers: [2,4,5,7]},
+                { numbers: [2,4,5,9]},
+                { numbers: [2,4,6,6]},
+                { numbers: [2,4,7,9]},
+                { numbers: [2,4,8,8]},
+                { numbers: [2,5,5,8]},
+                { numbers: [2,5,6,7]},
+                { numbers: [2,5,6,9]},
+                { numbers: [2,5,8,9]},
+                { numbers: [2,6,6,8]},
+                { numbers: [2,6,7,7]},
+                { numbers: [2,6,7,9]},
+                { numbers: [2,6,9,9]},
+                { numbers: [2,7,7,8]},
+                { numbers: [2,7,8,9]},
+                { numbers: [2,8,8,8]},
+                { numbers: [2,8,9,9]},
+                { numbers: [3,3,3,7]},
+                { numbers: [3,3,4,6]},
+                { numbers: [3,3,4,8]},
+                { numbers: [3,3,5,5]},
+                { numbers: [3,3,5,9]},
+                { numbers: [3,3,7,9]},
+                { numbers: [3,3,8,8]},
+                { numbers: [3,4,4,5]},
+                { numbers: [3,4,4,7]},
+                { numbers: [3,4,5,6]},
+                { numbers: [3,4,5,8]},
+                { numbers: [3,4,6,9]},
+                { numbers: [3,4,8,9]},
+                { numbers: [3,5,5,7]},
+                { numbers: [3,5,6,6]},
+                { numbers: [3,5,6,8]},
+                { numbers: [3,5,7,9]},
+                { numbers: [3,5,9,9]},
+                { numbers: [3,6,6,7]},
+                { numbers: [3,6,7,8]},
+                { numbers: [3,6,8,9]},
+                { numbers: [3,7,7,7]},
+                { numbers: [3,7,8,8]},
+                { numbers: [3,7,9,9]},
+                { numbers: [3,8,8,9]},
+                { numbers: [4,4,4,6]},
+                { numbers: [4,4,5,5]},
+                { numbers: [4,4,5,7]},
+                { numbers: [4,4,6,8]},
+                { numbers: [4,4,7,9]},
+                { numbers: [4,4,9,9]},
+                { numbers: [4,5,5,6]},
+                { numbers: [4,5,6,7]},
+                { numbers: [4,5,7,8]},
+                { numbers: [4,5,8,9]},
+                { numbers: [4,6,6,6]},
+                { numbers: [4,6,7,7]},
+                { numbers: [4,6,8,8]},
+                { numbers: [4,6,9,9]},
+                { numbers: [4,7,7,8]},
+                { numbers: [4,7,8,9]},
+                { numbers: [5,5,5,5]},
+                { numbers: [5,5,6,6]},
+                { numbers: [5,5,7,7]},
+                { numbers: [5,5,8,8]},
+                { numbers: [5,5,9,9]},
+                { numbers: [5,6,6,7]},
+                { numbers: [5,6,7,8]},
+                { numbers: [5,6,8,9]},
+                { numbers: [5,7,7,9]},
+                { numbers: [6,6,6,8]},
+                { numbers: [6,6,7,9]},
+            ],
+            medium: [
+                { numbers: [1,1,1,4]},
+                { numbers: [1,1,1,5]},
+                { numbers: [1,1,1,6]},
+                { numbers: [1,1,1,8]},
+                { numbers: [1,1,2,3]},
+                { numbers: [1,1,2,4]},
+                { numbers: [1,1,2,5]},
+                { numbers: [1,1,2,7]},
+                { numbers: [1,1,2,9]},
+                { numbers: [1,1,3,3]},
+                { numbers: [1,1,3,4]},
+                { numbers: [1,1,3,6]},
+                { numbers: [1,1,3,8]},
+                { numbers: [1,1,4,5]},
+                { numbers: [1,1,4,7]},
+                { numbers: [1,1,4,9]},
+                { numbers: [1,1,5,6]},
+                { numbers: [1,1,6,8]},
+                { numbers: [1,1,8,9]},
+                { numbers: [1,2,2,2]},
+                { numbers: [1,2,2,3]},
+                { numbers: [1,2,2,4]},
+                { numbers: [1,2,2,6]},
+                { numbers: [1,2,6,8]},
+                { numbers: [1,2,6,9]},
+                { numbers: [1,2,7,8]},
+                { numbers: [1,2,7,9]},
+                { numbers: [1,2,8,8]},
+                { numbers: [1,2,8,9]},
+                { numbers: [1,2,9,9]},
+                { numbers: [1,3,3,4]},
+                { numbers: [1,3,3,6]},
+                { numbers: [1,3,3,8]},
+                { numbers: [1,3,4,5]},
+                { numbers: [1,3,4,6]},
+                { numbers: [1,3,4,7]},
+                { numbers: [1,3,4,9]},
+                { numbers: [1,3,5,5]},
+                { numbers: [1,3,5,6]},
+                { numbers: [1,3,5,8]},
+                { numbers: [1,3,6,7]},
+                { numbers: [1,3,6,9]},
+                { numbers: [1,3,7,8]},
+                { numbers: [1,3,7,9]},
+                { numbers: [1,3,8,9]},
+                { numbers: [1,4,4,5]},
+                { numbers: [1,4,4,6]},
+                { numbers: [1,4,4,7]},
+                { numbers: [1,4,4,8]},
+                { numbers: [1,4,5,5]},
+                { numbers: [1,4,5,6]},
+                { numbers: [1,4,5,7]},
+                { numbers: [1,4,5,9]},
+                { numbers: [1,4,6,6]},
+                { numbers: [1,4,6,8]},
+                { numbers: [1,4,7,7]},
+                { numbers: [1,4,7,9]},
+                { numbers: [1,4,8,8]},
+                { numbers: [1,4,8,9]},
+                { numbers: [1,5,5,6]},
+                { numbers: [1,5,5,7]},
+                { numbers: [1,5,5,8]},
+                { numbers: [1,5,6,7]},
+                { numbers: [1,5,6,9]},
+                { numbers: [1,5,7,8]},
+                { numbers: [1,5,8,9]},
+                { numbers: [1,6,6,8]},
+                { numbers: [1,6,7,9]},
+                { numbers: [1,6,8,8]},
+                { numbers: [1,7,7,8]},
+                { numbers: [1,7,8,9]},
+                { numbers: [1,8,8,8]},
+                { numbers: [1,8,9,9]},
+                { numbers: [2,2,2,2]},
+                { numbers: [2,2,2,3]},
+                { numbers: [2,2,2,5]},
+                { numbers: [2,2,2,6]},
+                { numbers: [2,2,2,7]},
+                { numbers: [2,2,2,9]},
+                { numbers: [2,2,3,4]},
+                { numbers: [2,2,3,5]},
+                { numbers: [2,2,3,6]},
+                { numbers: [2,2,3,8]},
+                { numbers: [2,2,4,4]},
+                { numbers: [2,2,4,5]},
+                { numbers: [2,2,4,7]},
+                { numbers: [2,2,4,8]},
+                { numbers: [2,2,4,9]},
+                { numbers: [2,2,5,6]},
+                { numbers: [2,2,5,8]},
+                { numbers: [2,2,6,6]},
+                { numbers: [2,2,6,7]},
+                { numbers: [2,2,6,9]},
+                { numbers: [2,2,7,8]},
+                { numbers: [2,2,7,9]},
+                { numbers: [2,2,8,8]},
+                { numbers: [2,3,3,3]},
+                { numbers: [2,3,3,4]},
+                { numbers: [2,3,3,5]},
+                { numbers: [2,3,3,7]},
+                { numbers: [2,3,3,9]},
+                { numbers: [2,3,4,4]},
+                { numbers: [2,3,4,6]},
+                { numbers: [2,3,4,8]},
+                { numbers: [2,3,5,5]},
+                { numbers: [2,3,5,7]},
+                { numbers: [2,3,5,8]},
+                { numbers: [2,3,5,9]},
+                { numbers: [2,3,6,6]},
+                { numbers: [2,3,6,8]},
+                { numbers: [2,3,7,7]},
+                { numbers: [2,3,7,9]},
+                { numbers: [2,3,8,8]},
+                { numbers: [2,3,8,9]},
+                { numbers: [2,3,9,9]},
+                { numbers: [2,4,4,5]},
+                { numbers: [2,4,4,6]},
+                { numbers: [2,4,4,7]},
+                { numbers: [2,4,4,9]},
+                { numbers: [2,4,5,5]},
+                { numbers: [2,4,5,6]},
+                { numbers: [2,4,5,8]},
+                { numbers: [2,4,6,7]},
+                { numbers: [2,4,6,8]},
+                { numbers: [2,4,6,9]},
+                { numbers: [2,4,7,8]},
+                { numbers: [2,4,8,9]},
+                { numbers: [2,4,9,9]},
+                { numbers: [2,5,5,5]},
+                { numbers: [2,5,5,6]},
+                { numbers: [2,5,5,7]},
+                { numbers: [2,5,5,9]},
+                { numbers: [2,5,6,6]},
+                { numbers: [2,5,6,8]},
+                { numbers: [2,5,7,7]},
+                { numbers: [2,5,7,8]},
+                { numbers: [2,5,7,9]},
+                { numbers: [2,5,8,8]},
+                { numbers: [2,5,9,9]},
+                { numbers: [2,6,6,7]},
+                { numbers: [2,6,6,9]},
+                { numbers: [2,6,7,8]},
+                { numbers: [2,6,8,8]},
+                { numbers: [2,6,8,9]},
+                { numbers: [2,7,7,7]},
+                { numbers: [2,7,7,9]},
+                { numbers: [2,7,8,8]},
+                { numbers: [2,7,9,9]},
+                { numbers: [2,8,8,9]},
+                { numbers: [2,9,9,9]},
+                { numbers: [3,3,3,3]},
+                { numbers: [3,3,3,4]},
+                { numbers: [3,3,3,6]},
+                { numbers: [3,3,3,8]},
+                { numbers: [3,3,4,4]},
+                { numbers: [3,3,4,5]},
+                { numbers: [3,3,4,7]},
+                { numbers: [3,3,4,9]},
+                { numbers: [3,3,5,6]},
+                { numbers: [3,3,5,7]},
+                { numbers: [3,3,5,8]},
+                { numbers: [3,3,6,6]},
+                { numbers: [3,3,6,7]},
+                { numbers: [3,3,6,9]},
+                { numbers: [3,3,7,7]},
+                { numbers: [3,3,7,8]},
+                { numbers: [3,3,8,9]},
+                { numbers: [3,3,9,9]},
+                { numbers: [3,4,4,6]},
+                { numbers: [3,4,4,8]},
+                { numbers: [3,4,4,9]},
+                { numbers: [3,4,5,5]},
+                { numbers: [3,4,5,7]},
+                { numbers: [3,4,5,9]},
+                { numbers: [3,4,6,7]},
+                { numbers: [3,4,6,8]},
+                { numbers: [3,4,7,7]},
+                { numbers: [3,4,7,9]},
+                { numbers: [3,4,9,9]},
+                { numbers: [3,5,5,5]},
+                { numbers: [3,5,5,6]},
+                { numbers: [3,5,5,8]},
+                { numbers: [3,5,5,9]},
+                { numbers: [3,5,6,7]},
+                { numbers: [3,5,6,9]},
+                { numbers: [3,5,7,8]},
+                { numbers: [3,5,8,9]},
+                { numbers: [3,6,6,6]},
+                { numbers: [3,6,6,8]},
+                { numbers: [3,6,7,7]},
+                { numbers: [3,6,7,9]},
+                { numbers: [3,6,8,8]},
+                { numbers: [3,6,9,9]},
+                { numbers: [3,7,7,8]},
+                { numbers: [3,7,8,9]},
+                { numbers: [3,8,8,8]},
+                { numbers: [3,8,9,9]},
+                { numbers: [4,4,4,5]},
+                { numbers: [4,4,4,7]},
+                { numbers: [4,4,4,8]},
+                { numbers: [4,4,5,6]},
+                { numbers: [4,4,5,8]},
+                { numbers: [4,4,6,7]},
+                { numbers: [4,4,6,9]},
+                { numbers: [4,4,7,8]},
+                { numbers: [4,4,8,8]},
+                { numbers: [4,5,5,5]},
+                { numbers: [4,5,5,7]},
+                { numbers: [4,5,6,6]},
+                { numbers: [4,5,6,8]},
+                { numbers: [4,5,6,9]},
+                { numbers: [4,5,7,7]},
+                { numbers: [4,5,7,9]},
+                { numbers: [4,5,8,8]},
+                { numbers: [4,5,9,9]},
+                { numbers: [4,6,6,7]},
+                { numbers: [4,6,6,8]},
+                { numbers: [4,6,7,8]},
+                { numbers: [4,6,8,9]},
+                { numbers: [4,7,7,7]},
+                { numbers: [4,7,7,9]},
+                { numbers: [4,7,8,8]},
+                { numbers: [4,7,9,9]},
+                { numbers: [4,8,8,9]},
+                { numbers: [5,5,5,6]},
+                { numbers: [5,5,5,7]},
+                { numbers: [5,5,5,8]},
+                { numbers: [5,5,6,7]},
+                { numbers: [5,5,6,8]},
+                { numbers: [5,5,6,9]},
+                { numbers: [5,5,7,8]},
+                { numbers: [5,5,7,9]},
+                { numbers: [5,5,8,9]},
+                { numbers: [5,6,6,6]},
+                { numbers: [5,6,7,7]},
+                { numbers: [5,6,8,8]},
+                { numbers: [5,6,9,9]},
+                { numbers: [5,7,8,9]},
+                { numbers: [6,6,6,9]},
+                { numbers: [6,6,8,8]},
+                { numbers: [6,6,8,9]},
+                { numbers: [6,7,8,9]},
+                { numbers: [6,8,8,9]},
+                { numbers: [7,8,9,9]},
+            ],
+            hard: [
+                { numbers: [1,1,5,8]},
+                { numbers: [1,1,6,7]},
+                { numbers: [1,1,9,9]},
+                { numbers: [1,2,7,7]},
+                { numbers: [1,3,3,7]},
+                { numbers: [1,3,8,8]},
+                { numbers: [1,5,5,5]},
+                { numbers: [1,5,6,6]},
+                { numbers: [1,5,9,9]},
+                { numbers: [2,2,8,9]},
+                { numbers: [2,2,9,9]},
+                { numbers: [2,3,6,7]},
+                { numbers: [2,4,7,7]},
+                { numbers: [2,6,6,6]},
+                { numbers: [3,3,3,5]},
+                { numbers: [3,3,3,9]},
+                { numbers: [3,3,6,8]},
+                { numbers: [3,4,6,6]},
+                { numbers: [3,4,7,8]},
+                { numbers: [3,4,8,8]},
+                { numbers: [3,5,7,7]},
+                { numbers: [3,5,8,8]},
+                { numbers: [4,4,4,9]},
+                { numbers: [4,4,6,6]},
+                { numbers: [4,4,8,9]},
+                { numbers: [4,5,5,9]},
+                { numbers: [4,6,6,9]},
+                { numbers: [4,6,7,9]},
+                { numbers: [4,8,8,8]},
+                { numbers: [5,5,5,9]},
+                { numbers: [5,6,6,9]},
+                { numbers: [6,6,7,8]},
+                { numbers: [6,6,9,9]},
+                { numbers: [6,7,7,9]},
+                { numbers: [6,7,8,8]},
+                { numbers: [6,7,9,9]},
+                { numbers: [7,7,7,8]},
+                { numbers: [7,7,7,9]},
+                { numbers: [7,8,8,9]},
+                { numbers: [8,8,8,8]},
+                { numbers: [8,8,8,9]},
+                { numbers: [8,9,9,9]},
+                { numbers: [9,9,9,9]},
+            ]
+        };
+
+        // シャッフル関数
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // スタート画面の要素
+        const startScreen = document.getElementById('start-screen');
+        const difficultyOptions = document.querySelectorAll('.difficulty-option');
+
+        // ゲーム画面の要素
+        const gameScreen = document.getElementById('game-screen');
+        const questionCounter = document.getElementById('question-counter');
+        const expressionDisplay = document.getElementById('expression-display');
+        const numberCardsContainer = document.getElementById('number-cards');
+        const operatorCardsContainer = document.getElementById('operator-cards');
+	const undoButton = document.getElementById('undo-button');
+        const resetButton = document.getElementById('reset-button');
+        const submitButton = document.getElementById('submit-button');
+        const feedbackIcon = document.getElementById('feedback-icon');
+
+        // 結果画面の要素
+        const resultScreen = document.getElementById('result-screen');
+        const scoreDisplay = document.getElementById('score-display');
+        const messageDisplay = document.getElementById('message-display');
+
+        // 難易度選択
+        difficultyOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                // 既に選択されている難易度を再度クリックした場合、ゲーム開始
+                if (option.classList.contains('selected')) {
+                    if (currentDifficulty) { 
+                        startGame();
+                        return; 
+                    }
+                }
+                
+                // 選択状態のリセットと新しい選択
+                difficultyOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                currentDifficulty = option.dataset.difficulty;
+            });
+
+            // ダブルクリックでもゲーム開始
+            option.addEventListener('dblclick', () => {
+                difficultyOptions.forEach(opt => opt.classList.remove('selected')); 
+                option.classList.add('selected'); 
+                currentDifficulty = option.dataset.difficulty;
+                startGame();
+            });
+        });
+
+        // Enterキーでゲーム開始またはタイトルに戻る
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                if (startScreen.style.display === 'block' && currentDifficulty) {
+                    startGame();
+                } else if (resultScreen.style.display === 'block') {
+                    resetGame();
+                }
+            }
+        });
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            score = 0;
+            questionCount = 0;
+            loadNextQuestion();
+        }
+
+        function resetGame() {
+            startScreen.style.display = 'block';
+            gameScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            difficultyOptions.forEach(opt => opt.classList.remove('selected'));
+            currentDifficulty = '';
+            currentExpression = '';
+            expressionDisplay.textContent = '';
+            feedbackIcon.textContent = '';
+            feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
+            feedbackIcon.style.opacity = '0';
+            // --- 今回の修正点 ---
+            lastInputWasNumber = false; // resetGame時もリセット
+            // --- ここまで ---
+        }
+
+        function loadNextQuestion() {
+            if (questionCount < totalQuestions) {
+                questionCount++;
+                questionCounter.textContent = `問題 ${questionCount} / ${totalQuestions}`;
+                currentExpression = '';
+                expressionDisplay.textContent = ''; 
+                usedNumberIndices = [];
+                feedbackIcon.textContent = '';
+                feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
+                feedbackIcon.style.opacity = '0';
+                // --- 今回の修正点 ---
+                lastInputWasNumber = false; // 次の問題をロードする際もリセット
+                // --- ここまで ---
+
+                // カードのdisabled状態をリセット (数字カード、演算子カード全て)
+                document.querySelectorAll('.card').forEach(card => {
+                    card.classList.remove('disabled');
+                });
+
+
+                const availableProblems = shuffleArray([...problems[currentDifficulty]]);
+                const problem = availableProblems[questionCount - 1]; 
+                availableNumbers = shuffleArray([...problem.numbers]); 
+
+                renderCards();
+            } else {
+                showResultScreen();
+            }
+        }
+
+        function renderCards() {
+            numberCardsContainer.innerHTML = '';
+            availableNumbers.forEach((num, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card', 'number-card');
+                card.textContent = num;
+                card.dataset.index = index; 
+                card.addEventListener('click', handleNumberCardClick);
+                numberCardsContainer.appendChild(card);
+            });
+
+            // 記号カードのイベントリスナーを再設定
+            document.querySelectorAll('#operator-cards .card').forEach(card => {
+                card.addEventListener('click', handleOperatorCardClick);
+            });
+        }
+
+        function handleNumberCardClick(event) {
+            const card = event.target;
+            const index = parseInt(card.dataset.index);
+
+            if (!card.classList.contains('disabled')) {
+                // --- 今回の修正点 ---
+                // 直前の入力が数字だった場合、エラーメッセージを表示して入力をキャンセル
+                if (lastInputWasNumber) {
+                    alert('数字を連続で使用してはいけません。演算子か括弧を挟んでください。');
+                    return; // ここで処理を中断
+                }
+                // --- ここまで ---
+
+                currentExpression += card.textContent;
+                expressionDisplay.textContent = formatExpressionForDisplay(currentExpression);
+                card.classList.add('disabled'); // 使用済みの数字カードは無効化
+                usedNumberIndices.push(index); 
+                feedbackIcon.style.opacity = '0';
+
+                // --- 今回の修正点 ---
+                lastInputWasNumber = true; // 数字を入力したのでフラグをtrueにする
+                // --- ここまで ---
+            }
+        }
+
+        function handleOperatorCardClick(event) {
+            const card = event.target;
+            // 演算子と括弧はtextContentではなくdata-valueを使用
+            currentExpression += card.dataset.value; 
+            expressionDisplay.textContent = formatExpressionForDisplay(currentExpression);
+            feedbackIcon.style.opacity = '0';
+
+            // --- 今回の修正点 ---
+            lastInputWasNumber = false; // 演算子または括弧を入力したのでフラグをfalseにする
+            // --- ここまで ---
+        }
+
+        function formatExpressionForDisplay(expression) {
+            return expression.replace(/\*/g, '×').replace(/\//g, '÷');
+        }
+
+        resetButton.addEventListener('click', () => {
+            currentExpression = '';
+            expressionDisplay.textContent = '';
+            usedNumberIndices = [];
+            feedbackIcon.textContent = '';
+            feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
+            feedbackIcon.style.opacity = '0';
+            // --- 今回の修正点 ---
+            lastInputWasNumber = false; // リセット時もフラグをリセット
+            // --- ここまで ---
+
+            document.querySelectorAll('#number-cards .card').forEach(card => {
+                card.classList.remove('disabled');
+            });
+            // 演算子カードのdisabled状態もリセット
+            document.querySelectorAll('#operator-cards .card').forEach(card => {
+                card.classList.remove('disabled');
+            });
+        });
+	undoButton.addEventListener('click', () => {
+	    if (currentExpression.length === 0) {
+        	return; // 式が空の場合は何もしない
+	    }
+
+	    // 直前の文字を取得
+	    const lastChar = currentExpression.slice(-1); 
+
+	    // 最後の文字が数字だった場合
+	    if (!isNaN(parseInt(lastChar)) && lastChar !== ' ') { // 数字かどうかを判定 (空白は除く)
+	        // 使用済み数字のインデックスから最後のものを削除
+        	const lastUsedIndex = usedNumberIndices.pop();
+        	// 削除した数字カードを再有効化
+        	const cardToReenable = numberCardsContainer.querySelector(`.card.number-card[data-index="${lastUsedIndex}"]`);
+	        if (cardToReenable) {
+	            cardToReenable.classList.remove('disabled');
+        	}
+        	// 直前の入力が数字ではなくなるのでフラグをfalseに
+	        lastInputWasNumber = false; 
+
+	    } else if (lastChar === '(' || lastChar === ')') { // 括弧の場合
+        	// 括弧の後に数字が続く可能性があるので、lastInputWasNumberは変更しない
+        	// もし「()」のような空の括弧の連続を防止したいなら、ここで別途ロジックが必要だが、今回はシンプルに削除のみ
+        	lastInputWasNumber = false; // 演算子と同じ扱い
+	  } else { // 演算子の場合
+        	// 直前の入力が演算子だった場合、その前は数字だった可能性があるのでフラグをtrueに
+        	lastInputWasNumber = true; 
+	    }
+
+	    // 式から最後の1文字を削除
+    	  currentExpression = currentExpression.slice(0, -1);
+    	  expressionDisplay.textContent = formatExpressionForDisplay(currentExpression);
+
+	    feedbackIcon.style.opacity = '0'; // フィードバックアイコンを非表示にする
+	});
+
+        submitButton.addEventListener('click', () => {
+            feedbackIcon.textContent = '';
+            feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
+            feedbackIcon.style.opacity = '0'; 
+
+            // 数字がすべて使用されているかチェック
+            if (usedNumberIndices.length !== availableNumbers.length) {
+                alert('4つの数字すべてを使ってください！');
+                return;
+            }
+
+            // 開き括弧と閉じ括弧の数が一致するかチェック（前回からの継続）
+            const openParenCount = (currentExpression.match(/\(/g) || []).length;
+            const closeParenCount = (currentExpression.match(/\)/g) || []).length;
+            if (openParenCount !== closeParenCount) {
+                alert('括弧の数が合っていません！');
+                return;
+            }
+
+            let result;
+            try {
+                result = eval(currentExpression);
+            } catch (e) {
+                feedbackIcon.textContent = '✖';
+                feedbackIcon.classList.add('feedback-incorrect');
+                feedbackIcon.style.opacity = '1'; 
+                setTimeout(() => {
+                    feedbackIcon.textContent = '';
+                    feedbackIcon.classList.remove('feedback-incorrect');
+                    feedbackIcon.style.opacity = '0'; 
+		  loadNextQuestion(); // 不正解の場合次の問題へ進む
+                }, 1500);
+                return;
+            }
+
+            if (Math.abs(result - 10) < 0.0001) { 
+                score++;
+                feedbackIcon.textContent = '〇';
+                feedbackIcon.classList.add('feedback-correct');
+                feedbackIcon.style.opacity = '1'; 
+            } else {
+                feedbackIcon.textContent = '✖';
+                feedbackIcon.classList.add('feedback-incorrect');
+                feedbackIcon.style.opacity = '1'; 
+            }
+
+            setTimeout(() => {
+                loadNextQuestion(); //正解の場合次の問題へ進む
+            }, 1500);
+        });
+
+        function showResultScreen() {
+            gameScreen.style.display = 'none';
+            resultScreen.style.display = 'block';
+            scoreDisplay.textContent = `${score} / ${totalQuestions} 点`;
+
+            let message = '';
+            if (score === 0 || score === 1) {
+                message = '大丈夫！少しずつ計算に慣れていこう！';
+            } else if (score === 2 || score === 3) {
+                message = 'その調子！どんどん練習して、１０をたくさんつくろう！';
+            } else if (score === 4) {
+                message = 'あと少しでマスターだね！とっても良い感じ！';
+            } else if (score === 5) {
+                message = '完璧！君はmake10マスターだ！';
+            }
+            messageDisplay.textContent = message;
+        }
+    </script>
+</body>
+</html>
