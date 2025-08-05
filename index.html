@@ -41,40 +41,66 @@
             font-family: 'Chakra Petch', sans-serif;
             font-size: 3.5em;
             color: #4CAF50;
-            margin-bottom: 40px;
+            margin-bottom: 40px; /* 余白を調整 */
             letter-spacing: 3px;
         }
 
-        .difficulty-options {
+        /* ↓↓↓ ここからが新しいスタイル ↓↓↓ */
+        #start-options-container {
             display: flex;
-            flex-direction: column;
-            gap: 20px;
-            margin-bottom: 40px;
-            align-items: center;
+            justify-content: space-around;
+            align-items: flex-start;
         }
 
-        .difficulty-option {
-            font-size: 1.8em;
-            padding: 15px 30px;
+        .start-column {
+            flex-basis: 48%;
+        }
+        
+        .start-column h2 {
+            font-size: 1.5em;
+            color: #555;
+            margin-bottom: 15px;
+        }
+        
+        .difficulty-options, .mode-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+        /* ↑↑↑ ここまでが新しいスタイル ↑↑↑ */
+        
+        .difficulty-option, .mode-option {
+            font-size: 1.5em; /* 少しフォントサイズを調整 */
+            padding: 15px 20px;
             border: 3px solid #ddd;
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s ease-in-out;
-            width: 70%;
-            max-width: 350px;
+            width: 100%; /* 横幅をカラムに合わせる */
+            max-width: 300px;
             box-sizing: border-box;
             color: #555;
             font-weight: bold;
         }
 
-        .difficulty-option:hover {
+        .difficulty-option:hover, .mode-option:hover {
             background-color: #e0e0e0;
         }
 
+        /* 【色変更】難易度選択を黄色に変更 */
         .difficulty-option.selected {
-            border-color: #4CAF50;
-            background-color: #e8f5e9;
-            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+            border-color: #FFC107;
+            background-color: #FFFDE7;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+            color: #333;
+        }
+        
+        /* モード選択の青色はそのまま */
+        .mode-option.selected {
+            border-color: #2196F3;
+            background-color: #e3f2fd;
+            box-shadow: 0 0 15px rgba(33, 150, 243, 0.4);
             color: #333;
         }
 
@@ -266,6 +292,7 @@
         /* ------------------- 結果画面 ------------------- */
         #result-screen {
             display: none;
+	    cursor: pointer;
         }
 
         #result-screen h2 {
@@ -414,16 +441,30 @@
     <div id="game-container">
         <div id="start-screen">
             <h1>make10</h1>
-            <div class="difficulty-options">
-                <div class="difficulty-option" data-difficulty="easy">★初級</div>
-                <div class="difficulty-option" data-difficulty="medium">★★中級</div>
-                <div class="difficulty-option" data-difficulty="hard">★★★上級</div>
+            <div id="start-options-container">
+                <div class="start-column">
+                    <h2>難易度を選択</h2>
+                    <div class="difficulty-options">
+                        <div class="difficulty-option" data-difficulty="easy">★初級</div>
+                        <div class="difficulty-option" data-difficulty="medium">★★中級</div>
+                        <div class="difficulty-option" data-difficulty="hard">★★★上級</div>
+                    </div>
+                </div>
+                <div class="start-column">
+                    <h2>モードを選択</h2>
+                    <div class="mode-options">
+                        <div class="mode-option" data-mode="normal">通常モード</div>
+                        <div class="mode-option" data-mode="timeAttack">タイムアタック</div>
+                    </div>
+                </div>
             </div>
-            <p class="start-message">難易度を選択し、ダブルクリックまたは再度クリックで開始。Enterキーでも開始できます。</p>
         </div>
 
         <div id="game-screen">
-            <div id="question-counter">問題 1 / 5</div>
+            <div id="game-header">
+                <div id="question-counter"></div>
+                <div id="timer-display"></div>
+            </div>
             <div id="expression-display"></div>
             <div id="number-cards" class="card-container">
                 </div>
@@ -445,26 +486,29 @@
 
         <div id="result-screen">
             <h2>結果発表！</h2>
-            <div id="score-display">0 / 5 点</div>
+            <div id="score-display"></div>
             <div id="message-display"></div>
-            <p class="result-message">Enterキーを押してタイトル画面に戻る</p>
+            <p class="result-message">画面をクリックするか、Enterキーでタイトル画面に戻る</p>
         </div>
     </div>
 
     <script>
         // ゲームの状態を管理する変数
         let currentDifficulty = '';
+        let currentGameMode = ''; // ★追加
         let currentExpression = '';
         let availableNumbers = [];
         let usedNumberIndices = [];
         let score = 0;
         let questionCount = 0;
         const totalQuestions = 5;
-
-        // --- 今回の修正で追加/変更する変数 ---
+        let totalAnswered = 0; // ★追加
+        let timerInterval; // ★追加
+        let timeLeft = 60; // ★追加
         let lastInputWasNumber = false; // 直前の入力が数字だったかどうかを記録する変数
+	let acceptResultScreenInput = false;
 
-        // 問題データ (各難易度20問程度)
+        // 問題データ (初級142問(0を含むと本当は175問ある)、中級244問(0を含むと本当は328問ある)、上級49問手入力した)
         const problems = {
             easy: [
 		/*{ numbers: [値1, 値2, 値3, 値4], solution: '模範解答' },*/
@@ -635,6 +679,19 @@
                 { numbers: [1,2,2,3]},
                 { numbers: [1,2,2,4]},
                 { numbers: [1,2,2,6]},
+                { numbers: [1,2,2,8]},
+                { numbers: [1,2,3,3]},
+                { numbers: [1,2,3,5]},
+                { numbers: [1,2,3,7]},
+                { numbers: [1,2,3,9]},
+                { numbers: [1,2,4,4]},
+                { numbers: [1,2,4,6]},
+                { numbers: [1,2,4,8]},
+                { numbers: [1,2,5,5]},
+                { numbers: [1,2,5,7]},
+                { numbers: [1,2,5,9]},
+                { numbers: [1,2,6,6]},
+                { numbers: [1,2,6,8]},
                 { numbers: [1,2,6,8]},
                 { numbers: [1,2,6,9]},
                 { numbers: [1,2,7,8]},
@@ -889,6 +946,12 @@
                 { numbers: [4,8,8,8]},
                 { numbers: [5,5,5,9]},
                 { numbers: [5,6,6,9]},
+                { numbers: [5,6,7,9]},
+                { numbers: [5,7,7,7]},
+                { numbers: [5,7,7,8]},
+                { numbers: [5,8,8,8]},
+                { numbers: [5,8,8,9]},
+                { numbers: [5,9,9,9]},
                 { numbers: [6,6,7,8]},
                 { numbers: [6,6,9,9]},
                 { numbers: [6,7,7,9]},
@@ -913,17 +976,37 @@
             return array;
         }
 
+        function safeEval(expression) {
+            if (/[^0-9+\-*/().\s]/.test(expression)) {
+                throw new Error('Invalid characters in expression');
+            }
+            return new Function(`return ${expression}`)();
+        }
+
+        function validateUsedNumbers() {
+            const numbersInExpression = currentExpression.match(/\d+/g) || [];
+            if (numbersInExpression.length !== availableNumbers.length) {
+                return false;
+            }
+            const sortedProblemNumbers = [...availableNumbers].sort((a, b) => a - b).join(',');
+            const sortedExpressionNumbers = numbersInExpression.map(Number).sort((a, b) => a - b).join(',');
+            return sortedProblemNumbers === sortedExpressionNumbers;
+        }
+
         // スタート画面の要素
         const startScreen = document.getElementById('start-screen');
         const difficultyOptions = document.querySelectorAll('.difficulty-option');
+        const modeOptionsContainer = document.querySelector('.mode-options');
+        const modeOptions = document.querySelectorAll('.mode-option');
 
         // ゲーム画面の要素
         const gameScreen = document.getElementById('game-screen');
         const questionCounter = document.getElementById('question-counter');
+        const timerDisplay = document.getElementById('timer-display');
         const expressionDisplay = document.getElementById('expression-display');
         const numberCardsContainer = document.getElementById('number-cards');
         const operatorCardsContainer = document.getElementById('operator-cards');
-	const undoButton = document.getElementById('undo-button');
+        const undoButton = document.getElementById('undo-button');
         const resetButton = document.getElementById('reset-button');
         const submitButton = document.getElementById('submit-button');
         const feedbackIcon = document.getElementById('feedback-icon');
@@ -936,92 +1019,142 @@
         // 難易度選択
         difficultyOptions.forEach(option => {
             option.addEventListener('click', () => {
-                // 既に選択されている難易度を再度クリックした場合、ゲーム開始
-                if (option.classList.contains('selected')) {
-                    if (currentDifficulty) { 
-                        startGame();
-                        return; 
-                    }
+                // もしクリックしたものが既に選択済みで、かつモードも選択済みならゲーム開始
+                if (option.classList.contains('selected') && currentGameMode) {
+                    startGame();
+                    return; // ゲームが始まるので、ここで処理を終了
                 }
-                
-                // 選択状態のリセットと新しい選択
+
+                // 通常の選択処理
                 difficultyOptions.forEach(opt => opt.classList.remove('selected'));
                 option.classList.add('selected');
                 currentDifficulty = option.dataset.difficulty;
             });
+        });
 
-            // ダブルクリックでもゲーム開始
-            option.addEventListener('dblclick', () => {
-                difficultyOptions.forEach(opt => opt.classList.remove('selected')); 
-                option.classList.add('selected'); 
-                currentDifficulty = option.dataset.difficulty;
-                startGame();
+        // モード選択
+        modeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                // もしクリックしたものが既に選択済みで、かつ難易度も選択済みならゲーム開始
+                if (option.classList.contains('selected') && currentDifficulty) {
+                    startGame();
+                    return; // ゲームが始まるので、ここで処理を終了
+                }
+
+                // 通常の選択処理
+                modeOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                currentGameMode = option.dataset.mode;
             });
         });
 
-        // Enterキーでゲーム開始またはタイトルに戻る
+        resultScreen.addEventListener('click', () => {
+            // 旗が上がっている（trueの）場合のみ、タイトルに戻る
+            if (acceptResultScreenInput) {
+                resetGame();
+            }
+        });
+        
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                if (startScreen.style.display === 'block' && currentDifficulty) {
+                if (startScreen.style.display === 'block' && currentDifficulty && currentGameMode) {
                     startGame();
-                } else if (resultScreen.style.display === 'block') {
+                } else if (resultScreen.style.display === 'block' && acceptResultScreenInput) {
+                    // 旗が上がっている（trueの）場合のみ、タイトルに戻る
                     resetGame();
                 }
             }
         });
-
+        
         function startGame() {
             startScreen.style.display = 'none';
             gameScreen.style.display = 'block';
             score = 0;
             questionCount = 0;
-            loadNextQuestion();
+            totalAnswered = 0;
+            
+            if (currentGameMode === 'timeAttack') {
+                timeLeft = 60;
+                clearInterval(timerInterval); 
+                startTimer();
+                loadNextQuestion();
+            } else {
+                timerDisplay.style.display = 'none';
+                loadNextQuestion();
+            }
         }
 
+        function startTimer() {
+            timerDisplay.style.display = 'block';
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showResultScreen();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
         function resetGame() {
+            clearInterval(timerInterval);
+
             startScreen.style.display = 'block';
             gameScreen.style.display = 'none';
             resultScreen.style.display = 'none';
+            
+            // 各選択肢の選択状態だけをリセットする
             difficultyOptions.forEach(opt => opt.classList.remove('selected'));
+            modeOptions.forEach(opt => opt.classList.remove('selected'));
+
             currentDifficulty = '';
+            currentGameMode = '';
             currentExpression = '';
             expressionDisplay.textContent = '';
             feedbackIcon.textContent = '';
             feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
             feedbackIcon.style.opacity = '0';
-            // --- 今回の修正点 ---
-            lastInputWasNumber = false; // resetGame時もリセット
-            // --- ここまで ---
+            lastInputWasNumber = false;
         }
 
         function loadNextQuestion() {
-            if (questionCount < totalQuestions) {
+            if (currentGameMode === 'normal' && questionCount >= totalQuestions) {
+                showResultScreen();
+                return;
+            }
+
+            if (currentGameMode === 'timeAttack') {
+                // 【修正】「正解数」ではなく「挑戦した数」を元に問題番号を表示
+                questionCounter.textContent = `${totalAnswered + 1} 問目`;
+            } else {
                 questionCount++;
                 questionCounter.textContent = `問題 ${questionCount} / ${totalQuestions}`;
-                currentExpression = '';
-                expressionDisplay.textContent = ''; 
-                usedNumberIndices = [];
-                feedbackIcon.textContent = '';
-                feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
-                feedbackIcon.style.opacity = '0';
-                // --- 今回の修正点 ---
-                lastInputWasNumber = false; // 次の問題をロードする際もリセット
-                // --- ここまで ---
-
-                // カードのdisabled状態をリセット (数字カード、演算子カード全て)
-                document.querySelectorAll('.card').forEach(card => {
-                    card.classList.remove('disabled');
-                });
-
-
-                const availableProblems = shuffleArray([...problems[currentDifficulty]]);
-                const problem = availableProblems[questionCount - 1]; 
-                availableNumbers = shuffleArray([...problem.numbers]); 
-
-                renderCards();
-            } else {
-                showResultScreen();
             }
+
+            currentExpression = '';
+            expressionDisplay.textContent = '';
+            usedNumberIndices = [];
+            feedbackIcon.textContent = '';
+            feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
+            feedbackIcon.style.opacity = '0';
+            lastInputWasNumber = false;
+
+            document.querySelectorAll('.card').forEach(card => {
+                card.classList.remove('disabled');
+            });
+
+            const problemSet = shuffleArray([...problems[currentDifficulty]]);
+            const problem = problemSet[0];
+            availableNumbers = shuffleArray([...problem.numbers]);
+
+            renderCards();
         }
 
         function renderCards() {
@@ -1030,12 +1163,10 @@
                 const card = document.createElement('div');
                 card.classList.add('card', 'number-card');
                 card.textContent = num;
-                card.dataset.index = index; 
+                card.dataset.index = index;
                 card.addEventListener('click', handleNumberCardClick);
                 numberCardsContainer.appendChild(card);
             });
-
-            // 記号カードのイベントリスナーを再設定
             document.querySelectorAll('#operator-cards .card').forEach(card => {
                 card.addEventListener('click', handleOperatorCardClick);
             });
@@ -1044,40 +1175,28 @@
         function handleNumberCardClick(event) {
             const card = event.target;
             const index = parseInt(card.dataset.index);
-
             if (!card.classList.contains('disabled')) {
-                // --- 今回の修正点 ---
-                // 直前の入力が数字だった場合、エラーメッセージを表示して入力をキャンセル
                 if (lastInputWasNumber) {
                     alert('数字を連続で使用してはいけません。演算子か括弧を挟んでください。');
-                    return; // ここで処理を中断
+                    return;
                 }
-                // --- ここまで ---
-
                 currentExpression += card.textContent;
                 expressionDisplay.textContent = formatExpressionForDisplay(currentExpression);
-                card.classList.add('disabled'); // 使用済みの数字カードは無効化
-                usedNumberIndices.push(index); 
+                card.classList.add('disabled');
+                usedNumberIndices.push(index);
                 feedbackIcon.style.opacity = '0';
-
-                // --- 今回の修正点 ---
-                lastInputWasNumber = true; // 数字を入力したのでフラグをtrueにする
-                // --- ここまで ---
+                lastInputWasNumber = true;
             }
         }
 
         function handleOperatorCardClick(event) {
             const card = event.target;
-            // 演算子と括弧はtextContentではなくdata-valueを使用
-            currentExpression += card.dataset.value; 
+            currentExpression += card.dataset.value;
             expressionDisplay.textContent = formatExpressionForDisplay(currentExpression);
             feedbackIcon.style.opacity = '0';
-
-            // --- 今回の修正点 ---
-            lastInputWasNumber = false; // 演算子または括弧を入力したのでフラグをfalseにする
-            // --- ここまで ---
+            lastInputWasNumber = false;
         }
-
+        
         function formatExpressionForDisplay(expression) {
             return expression.replace(/\*/g, '×').replace(/\//g, '÷');
         }
@@ -1089,122 +1208,107 @@
             feedbackIcon.textContent = '';
             feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
             feedbackIcon.style.opacity = '0';
-            // --- 今回の修正点 ---
-            lastInputWasNumber = false; // リセット時もフラグをリセット
-            // --- ここまで ---
-
+            lastInputWasNumber = false;
             document.querySelectorAll('#number-cards .card').forEach(card => {
                 card.classList.remove('disabled');
             });
-            // 演算子カードのdisabled状態もリセット
             document.querySelectorAll('#operator-cards .card').forEach(card => {
                 card.classList.remove('disabled');
             });
         });
-	undoButton.addEventListener('click', () => {
-	    if (currentExpression.length === 0) {
-        	return; // 式が空の場合は何もしない
-	    }
 
-	    // 直前の文字を取得
-	    const lastChar = currentExpression.slice(-1); 
+        undoButton.addEventListener('click', () => {
+            if (currentExpression.length === 0) return;
+            const lastChar = currentExpression.slice(-1);
+            if (!isNaN(parseInt(lastChar)) && lastChar !== ' ') {
+                const lastUsedIndex = usedNumberIndices.pop();
+                const cardToReenable = numberCardsContainer.querySelector(`.card.number-card[data-index="${lastUsedIndex}"]`);
+                if (cardToReenable) cardToReenable.classList.remove('disabled');
+                lastInputWasNumber = false;
+            } else if (lastChar === '(' || lastChar === ')') {
+                lastInputWasNumber = false;
+            } else {
+                lastInputWasNumber = true;
+            }
+            currentExpression = currentExpression.slice(0, -1);
+            expressionDisplay.textContent = formatExpressionForDisplay(currentExpression);
+            feedbackIcon.style.opacity = '0';
+        });
 
-	    // 最後の文字が数字だった場合
-	    if (!isNaN(parseInt(lastChar)) && lastChar !== ' ') { // 数字かどうかを判定 (空白は除く)
-	        // 使用済み数字のインデックスから最後のものを削除
-        	const lastUsedIndex = usedNumberIndices.pop();
-        	// 削除した数字カードを再有効化
-        	const cardToReenable = numberCardsContainer.querySelector(`.card.number-card[data-index="${lastUsedIndex}"]`);
-	        if (cardToReenable) {
-	            cardToReenable.classList.remove('disabled');
-        	}
-        	// 直前の入力が数字ではなくなるのでフラグをfalseに
-	        lastInputWasNumber = false; 
-
-	    } else if (lastChar === '(' || lastChar === ')') { // 括弧の場合
-        	// 括弧の後に数字が続く可能性があるので、lastInputWasNumberは変更しない
-        	// もし「()」のような空の括弧の連続を防止したいなら、ここで別途ロジックが必要だが、今回はシンプルに削除のみ
-        	lastInputWasNumber = false; // 演算子と同じ扱い
-	  } else { // 演算子の場合
-        	// 直前の入力が演算子だった場合、その前は数字だった可能性があるのでフラグをtrueに
-        	lastInputWasNumber = true; 
-	    }
-
-	    // 式から最後の1文字を削除
-    	  currentExpression = currentExpression.slice(0, -1);
-    	  expressionDisplay.textContent = formatExpressionForDisplay(currentExpression);
-
-	    feedbackIcon.style.opacity = '0'; // フィードバックアイコンを非表示にする
-	});
-
-        submitButton.addEventListener('click', () => {
-            feedbackIcon.textContent = '';
-            feedbackIcon.classList.remove('feedback-correct', 'feedback-incorrect');
-            feedbackIcon.style.opacity = '0'; 
-
-            // 数字がすべて使用されているかチェック
-            if (usedNumberIndices.length !== availableNumbers.length) {
-                alert('4つの数字すべてを使ってください！');
+        function handleSubmit() {
+            if (!validateUsedNumbers()) {
+                alert('4つの数字を正しく1回ずつ使ってください！');
                 return;
             }
-
-            // 開き括弧と閉じ括弧の数が一致するかチェック（前回からの継続）
             const openParenCount = (currentExpression.match(/\(/g) || []).length;
             const closeParenCount = (currentExpression.match(/\)/g) || []).length;
             if (openParenCount !== closeParenCount) {
                 alert('括弧の数が合っていません！');
                 return;
             }
-
-            let result;
+            let isCorrect = false;
             try {
-                result = eval(currentExpression);
+                const result = safeEval(currentExpression);
+                if (Math.abs(result - 10) < 0.0001) isCorrect = true;
             } catch (e) {
-                feedbackIcon.textContent = '✖';
-                feedbackIcon.classList.add('feedback-incorrect');
-                feedbackIcon.style.opacity = '1'; 
-                setTimeout(() => {
-                    feedbackIcon.textContent = '';
-                    feedbackIcon.classList.remove('feedback-incorrect');
-                    feedbackIcon.style.opacity = '0'; 
-		  loadNextQuestion(); // 不正解の場合次の問題へ進む
-                }, 1500);
-                return;
+                isCorrect = false;
             }
-
-            if (Math.abs(result - 10) < 0.0001) { 
-                score++;
-                feedbackIcon.textContent = '〇';
-                feedbackIcon.classList.add('feedback-correct');
-                feedbackIcon.style.opacity = '1'; 
+            showFeedback(isCorrect);
+            if (isCorrect) score++;
+            if (currentGameMode === 'timeAttack') {
+                totalAnswered++;
+                loadNextQuestion();
             } else {
-                feedbackIcon.textContent = '✖';
-                feedbackIcon.classList.add('feedback-incorrect');
-                feedbackIcon.style.opacity = '1'; 
+                setTimeout(loadNextQuestion, 1500);
             }
+        }
 
-            setTimeout(() => {
-                loadNextQuestion(); //正解の場合次の問題へ進む
-            }, 1500);
-        });
+        function showFeedback(isCorrect) {
+            feedbackIcon.textContent = isCorrect ? '〇' : '✖';
+            feedbackIcon.className = 'feedback-icon';
+            feedbackIcon.classList.add(isCorrect ? 'feedback-correct' : 'feedback-incorrect');
+            feedbackIcon.style.opacity = '1';
+        }
 
         function showResultScreen() {
+            clearInterval(timerInterval);
             gameScreen.style.display = 'none';
             resultScreen.style.display = 'block';
-            scoreDisplay.textContent = `${score} / ${totalQuestions} 点`;
+            
+            // まずは入力を受け付けないように旗を下ろす
+            acceptResultScreenInput = false;
 
-            let message = '';
-            if (score === 0 || score === 1) {
-                message = '大丈夫！少しずつ計算に慣れていこう！';
-            } else if (score === 2 || score === 3) {
-                message = 'その調子！どんどん練習して、１０をたくさんつくろう！';
-            } else if (score === 4) {
-                message = 'あと少しでマスターだね！とっても良い感じ！';
-            } else if (score === 5) {
-                message = '完璧！君はmake10マスターだ！';
+            // タイムアタックモードの場合だけ、1秒後に旗を上げる
+            if (currentGameMode === 'timeAttack') {
+                setTimeout(() => {
+                    acceptResultScreenInput = true;
+                }, 1000); // 1000ミリ秒 = 1秒
+            } else {
+                // 通常モードの場合はすぐに旗を上げる
+                acceptResultScreenInput = true;
             }
-            messageDisplay.textContent = message;
+
+            // (これより下の結果メッセージ表示部分は変更ありません)
+            if (currentGameMode === 'timeAttack') {
+                scoreDisplay.textContent = `${totalAnswered}問挑戦し ${score}問 正解！`;
+                let message = '';
+                if (score <= 1) message = 'お疲れ様！ナイスチャレンジ！その一歩が大事だよ！✨';
+                else if (score <= 3) message = 'すごい！かなり解けたね！君はもうmake10マスターの卵だ！🐣';
+                else if (score <= 5) message = '素晴らしい！こんなに解けるなんて！君の頭脳はダイヤモンドだ！💎';
+                else message = '信じられない…！君は伝説のmake10ゴッドだ！おめでとう！👑';
+                messageDisplay.textContent = message;
+            } else { 
+                scoreDisplay.textContent = `${score} / ${totalQuestions} 点`;
+                let message = '';
+                if (score <= 1) message = '大丈夫！少しずつ計算に慣れていこう！';
+                else if (score <= 3) message = 'その調子！どんどん練習して、１０をたくさんつくろう！';
+                else if (score === 4) message = 'あと少しでマスターだね！とっても良い感じ！';
+                else message = '完璧！君はmake10マスターだ！';
+                messageDisplay.textContent = message;
+            }
         }
+
+        submitButton.addEventListener('click', handleSubmit);
     </script>
 </body>
 </html>
